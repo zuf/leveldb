@@ -108,7 +108,7 @@ module LevelDB
       if valptr.address == 0 || valptr == Pointer(UInt8).null
         return nil
       else
-        valstr = Bytes.new(valptr, vallen)        
+        valstr = Bytes.new(valptr, vallen)
         return  valstr
       end
     end
@@ -185,6 +185,24 @@ module LevelDB
       iterator.seek_to_first
       while iterator.valid?
         yield(iterator.key, iterator.value)
+        iterator.next
+      end
+      iterator.destroy
+    end
+
+    # Iterate over database. Each block args is a `Bytes` (`Slice(UIny8)`) struct.
+    #
+    # ```
+    # db.each_bytes do |key_bytes, value_bytes|
+    #   puts key_bytes
+    #   puts value_bytes
+    # end
+    # ```
+    def each_bytes : Void
+      iterator = Iterator.new(self)
+      iterator.seek_to_first
+      while iterator.valid?
+        yield(iterator.key_bytes, iterator.value_bytes)
         iterator.next
       end
       iterator.destroy

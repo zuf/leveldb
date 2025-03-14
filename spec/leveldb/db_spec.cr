@@ -213,6 +213,39 @@ describe LevelDB do
       end
     end
 
+    describe "#each_bytes" do
+    it "iterates through all the keys" do
+      FileUtils.rm_r(TEST_DB) if Dir.exists?(TEST_DB)
+      db = LevelDB::DB.new(TEST_DB)
+
+
+      k1 = Bytes.new(2, 1)
+      k2 = Bytes.new(2, 2)
+      k3 = Bytes.new(2, 3)
+
+      v1 = Bytes.new(3, 1)
+      v2 = Bytes.new(3, 2)
+      v3 = Bytes.new(3, 3)
+
+      db.put(k1, v1)
+      db.put(k2, v2)
+      db.put(k3, v3)
+
+      keys = Bytes.empty
+      values = Bytes.empty
+
+      db.each_bytes do |key, val|
+        keys += key
+        values += val
+      end
+
+      keys.should eq Bytes[1,1,  2,2,  3,3]
+      values.should eq Bytes[1,1,1,  2,2,2,  3,3,3]
+
+      db.close
+    end
+  end
+
     describe "#clear" do
       it "removes all the keys" do
         FileUtils.rm_r(TEST_DB) if Dir.exists?(TEST_DB)
