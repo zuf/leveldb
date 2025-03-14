@@ -32,6 +32,18 @@ module LevelDB
       String.new(ptr, len)
     end
 
+    def key_bytes
+      len = 0_u64
+      ptr = LibLevelDB.leveldb_iter_key(@iter_ptr, pointerof(len))
+      String.new(ptr, len)
+    end
+
+    def value_bytes
+      len = 0_u64
+      ptr = LibLevelDB.leveldb_iter_value(@iter_ptr, pointerof(len))
+      String.new(ptr, len)
+    end
+
     def next
       LibLevelDB.leveldb_iter_next(@iter_ptr)
     end

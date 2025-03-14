@@ -24,7 +24,7 @@ module LevelDB
       @opened = true
     end
 
-    def put(key : String, value : String) : Void
+    def put(key : String | Bytes, value : String | Bytes) : Void
       ensure_opened!
       LibLevelDB.leveldb_put(@db_ptr, @woptions_ptr, key, key.bytesize, value, value.bytesize, @err_ptr)
       check_error!
@@ -34,7 +34,7 @@ module LevelDB
       put(key, val)
     end
 
-    def get(key : String) : String | Nil
+    def get(key : String | Bytes) : String | Nil
       ensure_opened!
 
       vallen = 0_u64
@@ -49,11 +49,79 @@ module LevelDB
       end
     end
 
+    def get_bytes(key : String | Bytes) : Bytes | Nil
+      ensure_opened!
+
+      vallen = 0_u64
+      valptr = LibLevelDB.leveldb_get(@db_ptr, @roptions_ptr, key, key.bytesize, pointerof(vallen), @err_ptr)
+      check_error!
+      if valptr.address == 0 || valptr == Pointer(UInt8).null
+        return nil
+      else
+        bytes = Bytes.new(valptr, vallen).clone # copy bytes from leveldb
+        LibLevelDB.leveldb_free(valptr)
+        return  bytes
+      end
+    end
+
+    # Get bytes without copying memory. Use bytes in block. After that allocated by leveldb memory will be freed.
+    # ```
+    # db.get_bytes(key) do |bytes|
+    #   if bytes
+    #     puts bytes # do thomethind with bytes
+    #   else
+    #     puts "Not found"
+    #   end
+    # end
+    # ```
+    def get_bytes(key : String | Bytes, &) :  Nil
+      ensure_opened!
+
+      vallen = 0_u64
+      valptr = LibLevelDB.leveldb_get(@db_ptr, @roptions_ptr, key, key.bytesize, pointerof(vallen), @err_ptr)
+      check_error!
+      if valptr.address == 0 || valptr == Pointer(UInt8).null
+        yield(nil)
+        return
+      else
+        bytes = Bytes.new(valptr, vallen)
+        yield(bytes)
+        LibLevelDB.leveldb_free(valptr)
+        return
+      end
+    end
+
+    # WARNING: You should free allocated by leveldb memory after use returned value!
+    #
+    # See also `#get_bytes` with block which free memory for you automatically.
+    # ```
+    # bytes = db.get_unsafe_bytes(key)
+    # puts bytes # do thomethind with bytes
+    # db.free(bytes)
+    # ```
+    def get_unsafe_bytes(key : String | Bytes) : Bytes | Nil
+      ensure_opened!
+
+      vallen = 0_u64
+      valptr = LibLevelDB.leveldb_get(@db_ptr, @roptions_ptr, key, key.bytesize, pointerof(vallen), @err_ptr)
+      check_error!
+      if valptr.address == 0 || valptr == Pointer(UInt8).null
+        return nil
+      else
+        valstr = Bytes.new(valptr, vallen)        
+        return  valstr
+      end
+    end
+
+    def free(bytes : Bytes)
+      LibLevelDB.leveldb_free(bytes)
+    end
+
     def [](key)
       get(key)
     end
 
-    def delete(key : String) : Void
+    def delete(key : String | Bytes) : Void
       ensure_opened!
       LibLevelDB.leveldb_delete(@db_ptr, @woptions_ptr, key, key.bytesize, @err_ptr)
       check_error!

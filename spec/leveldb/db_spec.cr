@@ -35,6 +35,74 @@ describe LevelDB do
       db.destroy
     end
 
+    it "works with bytes" do
+      typeof("str".to_slice).should eq(Bytes)
+
+      FileUtils.rm_r(TEST_DB) if Dir.exists?(TEST_DB)
+
+      db = LevelDB::DB.new(TEST_DB)
+
+      # get / put
+      key_in_bytes = "key".to_slice
+      bytes_value = "value".to_slice
+      db.put(key_in_bytes, bytes_value)
+      db.get_bytes(key_in_bytes).should eq bytes_value
+      db.get(key_in_bytes).should eq "value"
+      db.get("key").should eq "value"
+      db.get_bytes("key".to_slice).should eq bytes_value
+
+      # when key does not exist
+      db.get("something-else").should eq nil
+      db.get("something-else".to_slice).should eq nil
+
+      # delete
+      db.delete("key".to_slice)
+      db.get("key".to_slice).should eq nil
+
+      # real bytes
+      zero_bytes = Bytes.new(8, 0)
+      bytes_key = Bytes.new(8) { |n| n.to_u8 }
+      bytes_value = Bytes.new(256) { |n| n.to_u8 }
+
+      db.put(bytes_key, bytes_value)
+      # get memory copied bytes
+      db.get_bytes(bytes_key).should eq bytes_value
+
+      # with zero bytes
+      db.put(zero_bytes, bytes_value)
+      db.get_bytes(zero_bytes).should eq bytes_value
+
+      db.get_bytes(zero_bytes) do |bytes|
+        bytes.should eq bytes_value
+      end
+      bytes = db.get_unsafe_bytes(zero_bytes)
+      bytes.should eq bytes_value
+      db.free(bytes.not_nil!)
+
+      db.delete(zero_bytes)
+
+      db.put(zero_bytes, zero_bytes)
+      db.get_bytes(zero_bytes).should eq zero_bytes
+      db.get(zero_bytes).should eq "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000" #String.new(zero_bytes)
+      db.get(zero_bytes).not_nil!.size.should eq zero_bytes.size
+      db.get(zero_bytes).not_nil!.bytesize.should eq zero_bytes.size
+
+      # Try to open already opened DB
+      expect_raises(LevelDB::Error, "IO error: lock") do
+        LevelDB::DB.new(TEST_DB)
+      end
+
+      # close
+      db.close
+
+      # should not raise, cause DB was closed
+      db = LevelDB::DB.new(TEST_DB)
+      db.close
+
+      # destroy
+      db.destroy
+    end
+
     describe ".new" do
       context "when DB does not exist yet" do
         context "when create_if_missing = true" do
@@ -179,7 +247,7 @@ describe LevelDB do
           data = data.succ
           key = key.succ
         end
-        
+
         key = "a" * key_length
         stress_amount.times do
           data = db.get(key)
@@ -189,13 +257,13 @@ describe LevelDB do
           end
           key = key.succ
         end
-                
+
         stress_amount.times do |n|
           key = "empty:#{n}"
           db.get(key).should eq nil
         end
 
-        db.destroy        
+        db.destroy
       end
 
       it "with lots of errors" do
@@ -227,16 +295,16 @@ describe LevelDB do
 
         db.opened?.should eq true
         db.closed?.should eq false
-          
+
         db.open
-  
+
         db.put("x", "33")
         db.get("x").should eq "33"
-  
+
         db.close
         db.opened?.should eq false
         db.closed?.should eq true
-  
+
         fibers_count = ENV.fetch("MT_ERRORS_FIBERS_COUNT") { 16 }.to_i
         stress_amount = ENV.fetch("MT_ERRORS_STRESS_AMOUNT") { 1000 }.to_i
         wg = WaitGroup.new(fibers_count)
@@ -250,7 +318,7 @@ describe LevelDB do
           ensure
             wg.done
           end
-        end    
+        end
 
         wg.wait
       end
@@ -271,7 +339,7 @@ describe LevelDB do
         db.delete("aa")
         db.get("aa").should eq nil
         db.get("bb").should eq "22"
-        
+
         stress_amount = ENV.fetch("SNAPSHOTS_STRESS_AMOUNT") { 1000 }.to_i
         snapshots = Array(LevelDB::Snapshot).new
         data = "aaaaa"
