@@ -20,6 +20,15 @@ module LevelDB
       LibLevelDB.leveldb_iter_valid(@iter_ptr)
     end
 
+    def error : String?
+      err_ptr = Pointer(UInt8).null
+      LibLevelDB.leveldb_iter_get_error(@iter_ptr, pointerof(err_ptr))
+      return if err_ptr == nil || err_ptr.null?
+      err_str = String.new err_ptr
+      LibLevelDB.leveldb_free(err_str)
+      err_str
+    end
+
     def key
       len = 0_u64
       ptr = LibLevelDB.leveldb_iter_key(@iter_ptr, pointerof(len))

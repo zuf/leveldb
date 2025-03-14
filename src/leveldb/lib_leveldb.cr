@@ -39,7 +39,7 @@ lib LibLevelDB
   fun leveldb_iter_next(iterator : Void*)
   fun leveldb_iter_key(iterator : Void*, klen : SizeT*) : UInt8*
   fun leveldb_iter_value(iterator : Void*, vlen : SizeT*) : UInt8*
-  fun leveldb_iter_get_error(iterator : Void*, errptr : Void*)
+  fun leveldb_iter_get_error(iterator : Void*, errptr : UInt8**)
   fun leveldb_iter_seek_to_first(iterator : Void*)
   fun leveldb_iter_seek_to_last(iterator : Void*)
   fun leveldb_iter_seek(iterator : Void*, key : UInt8*, klen : SizeT)

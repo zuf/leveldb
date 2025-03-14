@@ -19,8 +19,11 @@ describe LevelDB::Iterator do
     iterator.value.should eq "v2"
 
     iterator.valid?.should eq true
+    iterator.error.should eq nil
+
     iterator.next
     iterator.valid?.should eq false
+    iterator.error.should eq nil
 
     iterator.seek_to_first
     iterator.key.should eq "k1"
@@ -43,6 +46,7 @@ describe LevelDB::Iterator do
 
     iterator.key.should eq "seekmeinstead"
     iterator.value.should eq "success"
+    iterator.error.should eq nil
     iterator.destroy
     db.close
   end
