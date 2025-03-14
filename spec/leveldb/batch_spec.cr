@@ -28,6 +28,13 @@ describe LevelDB::Batch do
       db.get("b").should eq "1"
       db.get("a").should eq "20"
 
+      batch = LevelDB::Batch.new
+      batch.put("a", "bad-a")
+      batch.put("b", "bad-b")
+      batch.destroy
+
+      db.get("b").should eq "1"
+      db.get("a").should eq "20"
     ensure
       db.close
     end
